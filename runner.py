@@ -1,11 +1,22 @@
-import time
+import asyncio
+import logging
 
-class Runner:
+class AsyncRunner:
     def __init__(self, scheduler):
         self.scheduler = scheduler
+        self.logger = logging.getLogger(__name__)
 
-    def run(self):
-        """Run tasks in sequence based on their interval"""
-        for task, interval in self.scheduler.get_tasks():
-            time.sleep(interval)
-            task.execute()
+    async def _run_task(self, task, interval):
+        try:
+            await asyncio.sleep(interval)
+            await task.execute()
+        except Exception as e:
+            self.logger.error(f"Error executing task {task.name}: {e}")
+            raise
+
+    async def run_concurrently(self):
+        tasks = [
+            self._run_task(task, interval)
+            for task, interval in self.scheduler.get_tasks()
+        ]
+        await asyncio.gather(*tasks)
